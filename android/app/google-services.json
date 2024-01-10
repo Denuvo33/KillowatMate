@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "29182770510",
+    "firebase_url": "https://test-realtime-app-ba4c7-default-rtdb.firebaseio.com",
+    "project_id": "test-realtime-app-ba4c7",
+    "storage_bucket": "test-realtime-app-ba4c7.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:29182770510:android:937be7b8b1c12391bc321f",
+        "android_client_info": {
+          "package_name": "com.example.background_service"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCS-6v-JAuX_6OBZszz5ruGBOqe9IF3HkA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
