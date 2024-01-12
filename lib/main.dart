@@ -6,14 +6,15 @@ import 'package:background_service/auth/sign_in_page.dart';
 import 'package:background_service/electronic_model.dart';
 import 'package:background_service/firebase_options.dart';
 import 'package:background_service/page/calculate_page.dart';
-import 'package:background_service/page/create_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:intl/intl.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalPlugin =
     FlutterLocalNotificationsPlugin();
@@ -27,6 +28,7 @@ void main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await initservice();
   Gemini.init(apiKey: 'AIzaSyCPv3EnoImMB1AJn1z_iMqoLs25LsNkzFs');
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const MyApp());
 }
 
@@ -57,25 +59,34 @@ Future<void> initservice() async {
 
 @pragma('vm:enry:point')
 void onStart(ServiceInstance service) async {
+  var uid = FirebaseAuth.instance.currentUser!.uid;
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   DartPluginRegistrant.ensureInitialized();
-  DatabaseReference db = FirebaseDatabase.instance.ref('users/1/tools');
+  DatabaseReference db = FirebaseDatabase.instance.ref('users/$uid');
 
   int lastUpdateTime = 0;
   num totalDailyKwh = 0;
   void fetchDataAndUpdate() async {
-    db.once().then((event) {
+    db.onValue.listen((event) {
       var data = event.snapshot.value;
       if (data != null && data is Map) {
         totalDailyKwh = data['totalDailyKwh'];
+      }
+    });
+    db.child('tools').once().then((event) {
+      var data = event.snapshot.value;
+      if (data != null && data is Map) {
         data.forEach((key, value) async {
-          var watt = value['watt'];
-          var amount = value['amount'];
-          var totalkwh = value['totalKwh'];
-          totalkwh += (watt * 2 / 1000) * amount;
-          totalDailyKwh += totalkwh;
-          db.child('$key').update({'totalKwh': totalkwh});
-          db.update({'totalDailyKwh': totalDailyKwh});
+          var condition = value['condition'];
+          if (condition) {
+            var watt = value['watt'];
+            var amount = value['amount'];
+            var totalkwh = value['totalKwh'];
+            totalkwh += (watt * 2 / 1000) * amount;
+            totalDailyKwh += totalkwh;
+            db.child('$key').update({'totalKwh': totalkwh});
+            db.update({'totalDailyKwh': totalDailyKwh});
+          }
         });
       }
     });
@@ -100,7 +111,6 @@ void onStart(ServiceInstance service) async {
   });
 
   Timer.periodic(Duration(seconds: 5), (timer) {
-    // Fetch data only if 5 seconds have passed since the last update
     if (DateTime.now().millisecondsSinceEpoch - lastUpdateTime >= 5000) {
       fetchDataAndUpdate();
     }
@@ -150,11 +160,27 @@ class _HomePageState extends State<HomePage> {
   num thisMonthKwh = 0;
   num maxDailyKwh = 0;
   List<ElectronicModel> toolsList = [];
+  final TextEditingController _watts = TextEditingController();
+  final TextEditingController _amount = TextEditingController();
+  String toolsValue = 'AC';
+  List<String> listDayOrMonth = ['Daily', 'month'];
+  List<ElectronicModel> myTools = [];
+  List<String> listTools = [
+    'AC',
+    'TV',
+    'Lamp',
+    'PC',
+    'Fan',
+    'Iron',
+    'Water Machine',
+    'Router',
+  ];
   bool showList = false;
   DatabaseReference? db;
   var uid = FirebaseAuth.instance.currentUser!.uid;
   var auth = FirebaseAuth.instance;
   var userName = 'aa';
+  var thisMonth = '';
   @override
   void initState() {
     // TODO: implement initState
@@ -162,17 +188,106 @@ class _HomePageState extends State<HomePage> {
     getData();
   }
 
+  createNewTools() {
+    showDialog(
+        barrierDismissible: false,
+        context: context,
+        builder: (builder) {
+          return StatefulBuilder(
+              builder: (BuildContext context, StateSetter setstate) {
+            return AlertDialog(
+              title: Text('Add your tools'),
+              content: Container(
+                height: 400,
+                child: Column(
+                  children: [
+                    DropdownButton<String>(
+                        value: toolsValue,
+                        items: listTools.map((String items) {
+                          return DropdownMenuItem(
+                            value: items,
+                            child: Text(items),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setstate(() => toolsValue = value!);
+                        }),
+                    TextField(
+                      controller: _watts,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'How many watts is it?',
+                        suffixText: 'watts',
+                        helperText: 'e.g.10',
+                      ),
+                    ),
+                    TextField(
+                      controller: _amount,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'how many are there?',
+                        helperText: 'e.g.1',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text('Cancel')),
+                TextButton(
+                    onPressed: () async {
+                      if (_amount.text.isEmpty || _watts.text.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Fill all required')));
+                      } else {
+                        var result =
+                            num.parse(_amount.text) * num.parse(_watts.text);
+
+                        db!.child('$toolsValue ${_watts.text} watts').update({
+                          'watt': num.parse(_watts.text),
+                          'name': toolsValue,
+                          'amount': num.parse(_amount.text),
+                          'condition': true,
+                          'runTime': 0,
+                          'totalKwh': result
+                        });
+                        _amount.clear();
+                        _watts.clear();
+                        toolsValue = 'AC';
+                        Navigator.pop(context);
+                      }
+                    },
+                    child: Text('Confirm'))
+              ],
+            );
+          });
+        });
+  }
+
   getData() {
+    DateTime currentDate = DateTime.now();
+    int month = currentDate.month;
+
+    String monthName =
+        DateFormat.MMMM().format(DateTime(currentDate.year, month));
+
     DatabaseReference dbTotal = FirebaseDatabase.instance.ref('users/$uid');
     dbTotal.onValue.listen((event) {
       var data = event.snapshot.value;
-      debugPrint('value is $data');
       if (data != null && data is Map) {
         setState(() {
           totalDailyKwh = data['totalDailyKwh'];
-          thisMonthKwh = data['thisMonthKwh'];
+          thisMonthKwh = data['thisMonthKwh'] + totalDailyKwh;
           maxDailyKwh = data['maxDailyKwh'];
           userName = data['username'];
+          thisMonth = data['month'];
+          if (thisMonth != monthName) {
+            dbTotal.update({'month': monthName});
+          }
         });
       }
     });
@@ -186,17 +301,19 @@ class _HomePageState extends State<HomePage> {
         data.forEach((key, value) {
           var watt = value['watt'];
           var name = value['name'];
-          var totalLampKwh = value['totalKwh'];
+          var totalKwh = value['totalKwh'];
           var amount = value['amount'];
           var image = value['image'];
           var condition = value['condition'];
+          var runTime = value['runTime'];
 
           setState(() {
             toolsList.add(ElectronicModel(
                 name: name,
                 id: name,
+                runTime: runTime,
                 amount: amount,
-                totalToolsKwh: totalLampKwh,
+                totalToolsKwh: totalKwh,
                 condition: condition,
                 image: image,
                 watt: watt));
@@ -213,6 +330,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    var startText = 'Start';
     return Scaffold(
       appBar: AppBar(
         title: Text('KillowatMate'),
@@ -304,10 +422,11 @@ class _HomePageState extends State<HomePage> {
                 Card(
                   color: Colors.tealAccent,
                   child: Container(
+                    width: 80,
                     margin: const EdgeInsets.all(7),
                     child: Column(
                       children: [
-                        Text('This Month',
+                        Text(thisMonth,
                             style: TextStyle(fontWeight: FontWeight.bold)),
                         Text('$thisMonthKwh kWh')
                       ],
@@ -326,10 +445,11 @@ class _HomePageState extends State<HomePage> {
                       width: 150,
                       child: ElevatedButton(
                           onPressed: () {
-                            Navigator.push(
+                            /*  Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (ctx) => CreatePage()));
+                                    builder: (ctx) => CreatePage()));*/
+                            createNewTools();
                           },
                           child: Row(
                             children: [
@@ -367,110 +487,97 @@ class _HomePageState extends State<HomePage> {
                       itemCount: toolsList.length,
                       itemBuilder: (BuildContext context, int index) {
                         return GestureDetector(
-                          onLongPress: () {
-                            showDialog(
-                                context: context,
-                                builder: (builder) {
-                                  return AlertDialog(
-                                    title: Text(
-                                        'Are you sure want to delete ${toolsList[index].name}?'),
-                                    actions: [
-                                      TextButton(
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                          },
-                                          child: Text('No')),
-                                      TextButton(
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                          },
-                                          child: Text('Yes'))
-                                    ],
-                                  );
-                                });
-                          },
-                          child: Container(
+                            onLongPress: () {
+                              showDialog(
+                                  context: context,
+                                  builder: (builder) {
+                                    return AlertDialog(
+                                      title: Text(
+                                          'Are you sure want to delete ${toolsList[index].name}?'),
+                                      actions: [
+                                        TextButton(
+                                            onPressed: () {
+                                              Navigator.pop(context);
+                                            },
+                                            child: Text('No')),
+                                        TextButton(
+                                            onPressed: () {
+                                              db!
+                                                  .child(
+                                                      '${toolsList[index].name} ${toolsList[index].watt} watts')
+                                                  .remove();
+                                              Navigator.pop(context);
+                                            },
+                                            child: Text('Yes'))
+                                      ],
+                                    );
+                                  });
+                            },
                             child: Card(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Column(
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Icon(Icons.info),
-                                          Text(
-                                            toolsList[index].condition!
-                                                ? 'Running'
-                                                : 'Stopped',
-                                            style: TextStyle(
-                                                color:
-                                                    toolsList[index].condition!
-                                                        ? Colors.green
-                                                        : Colors.red,
-                                                fontWeight: FontWeight.bold),
-                                          )
-                                        ],
-                                      ),
-                                      SizedBox(
-                                        height: 3,
-                                      ),
-                                      SizedBox(
-                                        width: 100,
-                                        child: Image.network(
-                                          toolsList[index].image!,
-                                          fit: BoxFit.cover,
+                              child: ListTile(
+                                title: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(Icons.info),
+                                        Text(
+                                          toolsList[index].condition!
+                                              ? 'Running'
+                                              : 'Stopped',
+                                          style: TextStyle(
+                                              color: toolsList[index].condition!
+                                                  ? Colors.green
+                                                  : Colors.red,
+                                              fontWeight: FontWeight.bold),
                                         ),
-                                      ),
-                                      // Text('Hold For Delete')
-                                    ],
-                                  ),
-                                  SizedBox(
-                                    width: 10,
-                                  ),
-                                  Column(
-                                    children: [
-                                      Text(
-                                        toolsList[index].name.toString(),
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15),
-                                      ),
-                                      Text('Watt: ${toolsList[index].watt}'),
-                                      Text(
-                                          'Amount: ${toolsList[index].amount}'),
-                                      if (toolsList[index].amount! == 1)
-                                        Text('Time Running:'),
-                                      Divider(),
-                                      SizedBox(
-                                        height: 3,
-                                      ),
-                                      Text(
-                                        'Total kWh: ${toolsList[index].totalToolsKwh}',
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold),
-                                      )
-                                    ],
-                                  ),
-                                  const Spacer(),
-                                  Switch(
-                                      value: toolsList[index].condition!,
-                                      onChanged: ((value) {
-                                        setState(() {
-                                          toolsList[index].condition = value;
-                                        });
-                                      }))
-                                ],
+                                        Spacer(),
+                                        Switch(
+                                            value: toolsList[index].condition!,
+                                            onChanged: ((value) {
+                                              db!
+                                                  .child(
+                                                      '${toolsList[index].name} ${toolsList[index].watt} watts')
+                                                  .update({'condition': value});
+                                              setState(() {
+                                                toolsList[index].condition =
+                                                    value;
+                                              });
+                                            }))
+                                      ],
+                                    ),
+                                    Text(
+                                      toolsList[index].name!,
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    )
+                                  ],
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Watts: ${toolsList[index].watt}'),
+                                    Text('Amount: ${toolsList[index].amount}x'),
+                                    Text(
+                                        'Time Running: ${toolsList[index].runTime} minute'),
+                                    Divider(),
+                                    Text(
+                                      'Total Watts: ${toolsList[index].totalToolsKwh}',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    )
+                                  ],
+                                ),
                               ),
-                            ),
-                          ),
-                        );
+                            ));
                       },
                     ),
                     Container(
                       margin: const EdgeInsets.all(20),
                       child: FloatingActionButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          createNewTools();
+                        },
                         child: Icon(Icons.add),
                       ),
                     )
@@ -483,7 +590,12 @@ class _HomePageState extends State<HomePage> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (ctx) => CalculatePage()));
+                      },
                       child: Row(
                         children: [
                           Icon(Icons.calculate),
@@ -491,15 +603,40 @@ class _HomePageState extends State<HomePage> {
                         ],
                       )),
                   ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () async {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Not Available Right Now')));
+                      },
                       child: Row(
                         children: [
                           Icon(Icons.timer),
-                          Text('Start'),
+                          Text(startText),
                         ],
                       )),
                   ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        showDialog(
+                            context: context,
+                            builder: (builder) {
+                              return AlertDialog(
+                                title: Text(
+                                    'Are you sure want to clear your tools list?'),
+                                actions: [
+                                  TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                      },
+                                      child: Text('No')),
+                                  TextButton(
+                                      onPressed: () {
+                                        db!.remove();
+                                        Navigator.pop(context);
+                                      },
+                                      child: Text('Yes'))
+                                ],
+                              );
+                            });
+                      },
                       child: Row(
                         children: [
                           Icon(Icons.delete_forever),

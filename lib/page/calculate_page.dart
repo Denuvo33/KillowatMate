@@ -83,7 +83,7 @@ class _CalculatePageState extends State<CalculatePage> {
             barrierDismissible: false,
             builder: (builder) {
               return AlertDialog(
-                title: Text('Result'),
+                title: Text('Result (You reach the limit for total kWh)'),
                 actions: [
                   TextButton(
                       onPressed: () {
@@ -102,6 +102,22 @@ class _CalculatePageState extends State<CalculatePage> {
     } else {
       await Future.delayed(Duration(seconds: 3));
       Navigator.pop(ctx);
+      showDialog(
+          context: context,
+          builder: (builder) {
+            return AlertDialog(
+              title: Text('Result'),
+              content: Text(
+                  'Your tools usage is safe and not reach the limit,Keep support save energy for better future.\n Total is $totalToolsKwh kWh'),
+              actions: [
+                TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text('Close'))
+              ],
+            );
+          });
     }
   }
 
@@ -122,8 +138,12 @@ class _CalculatePageState extends State<CalculatePage> {
                     child: const Text('Close')),
                 TextButton(
                     onPressed: () {
-                      Navigator.pop(ctx);
-                      calculatingDialog(context);
+                      if (_maxkWh.text.isEmpty ||
+                          int.parse(_maxkWh.text) <= 0) {
+                      } else {
+                        Navigator.pop(ctx);
+                        calculatingDialog(context);
+                      }
                     },
                     child: const Text('Confirm'))
               ],
@@ -136,8 +156,10 @@ class _CalculatePageState extends State<CalculatePage> {
                     TextField(
                       controller: _maxkWh,
                       keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                          labelText: 'set your max kWh', suffix: Text('kWh')),
+                      decoration: const InputDecoration(
+                          helperText: 'Empty text and <= 0 not allowed',
+                          labelText: 'set your max kWh',
+                          suffix: Text('kWh')),
                     )
                   ],
                 ),
