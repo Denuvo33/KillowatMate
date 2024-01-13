@@ -291,7 +291,7 @@ class _HomePageState extends State<HomePage> {
                         Navigator.pop(context);
                         if (!tutor2Done) {
                           showTutor2 = true;
-                          await Future.delayed(Duration(milliseconds: 50));
+                          await Future.delayed(Duration(seconds: 1));
                           createTutorial();
                           showTutorial();
                         }
@@ -838,62 +838,48 @@ class _HomePageState extends State<HomePage> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   ElevatedButton(
-                      key: keyButton3,
-                      onPressed: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (ctx) => CalculatePage()));
-                      },
-                      child: Row(
-                        children: [
-                          Icon(Icons.calculate),
-                          Text('Calculate'),
-                        ],
-                      )),
+                    key: keyButton3,
+                    onPressed: () {
+                      Navigator.push(context,
+                          MaterialPageRoute(builder: (ctx) => CalculatePage()));
+                    },
+                    child: Text('Calculate'),
+                  ),
                   ElevatedButton(
-                      key: keyButton4,
-                      onPressed: () async {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Not Available Right Now')));
-                      },
-                      child: Row(
-                        children: [
-                          Icon(Icons.timer),
-                          Text(startText),
-                        ],
-                      )),
+                    key: keyButton4,
+                    onPressed: () async {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Not Available Right Now')));
+                    },
+                    child: Text(startText),
+                  ),
                   ElevatedButton(
-                      key: keyButton5,
-                      onPressed: () {
-                        showDialog(
-                            context: context,
-                            builder: (builder) {
-                              return AlertDialog(
-                                title: Text(
-                                    'Are you sure want to clear your tools list?'),
-                                actions: [
-                                  TextButton(
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                      },
-                                      child: Text('No')),
-                                  TextButton(
-                                      onPressed: () {
-                                        db!.remove();
-                                        Navigator.pop(context);
-                                      },
-                                      child: Text('Yes'))
-                                ],
-                              );
-                            });
-                      },
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete_forever),
-                          Text('Clear All'),
-                        ],
-                      ))
+                    key: keyButton5,
+                    onPressed: () {
+                      showDialog(
+                          context: context,
+                          builder: (builder) {
+                            return AlertDialog(
+                              title: Text(
+                                  'Are you sure want to clear your tools list?'),
+                              actions: [
+                                TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                    },
+                                    child: Text('No')),
+                                TextButton(
+                                    onPressed: () {
+                                      db!.remove();
+                                      Navigator.pop(context);
+                                    },
+                                    child: Text('Yes'))
+                              ],
+                            );
+                          });
+                    },
+                    child: Text('Clear All'),
+                  )
                 ],
               )
           ],
