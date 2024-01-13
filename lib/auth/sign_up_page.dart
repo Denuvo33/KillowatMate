@@ -36,6 +36,8 @@ class _SignUpPageState extends State<SignUpPage> {
         'username': username,
         'maxDailyKwh': 0,
         'thisMonthKwh': 0,
+        'tutor1Done': false,
+        'tutor2Done': false,
         'totalDailyKwh': 0,
       });
 

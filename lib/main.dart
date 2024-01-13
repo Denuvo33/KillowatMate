@@ -15,6 +15,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalPlugin =
     FlutterLocalNotificationsPlugin();
@@ -125,13 +126,32 @@ void onStart(ServiceInstance service) async {
   });
 }
 
+showInformationDialog(BuildContext context) {
+  showDialog(
+      context: context,
+      builder: (builder) {
+        return AlertDialog(
+          title: const Text('Information'),
+          content: const Text(
+              'KilowattMate is your go-to app for real-time energy monitoring and efficiency management. Track electricity usage, calculate total wattage, and set consumption targets with ease. The apps AI analyzes your habits, offering personalized suggestions to reduce energy waste. Enjoy a user-friendly interface, receive alerts, and empower yourself for a greener tomorrow. Download KilowattMate now to take control of your electricity consumption and save on energy bills'),
+          actions: [
+            TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text('Close'))
+          ],
+        );
+      });
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: AuthPage(),
+      home: const AuthPage(),
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
           appBarTheme: AppBarTheme(color: Colors.cyan),
@@ -159,10 +179,20 @@ class _HomePageState extends State<HomePage> {
   num totalDailyKwh = 0;
   num thisMonthKwh = 0;
   num maxDailyKwh = 0;
+  GlobalKey keyButton1 = GlobalKey();
+  GlobalKey keyButton2 = GlobalKey();
+  GlobalKey keyButton3 = GlobalKey();
+  GlobalKey keyButton4 = GlobalKey();
+  GlobalKey keyButton5 = GlobalKey();
   List<ElectronicModel> toolsList = [];
   final TextEditingController _watts = TextEditingController();
   final TextEditingController _amount = TextEditingController();
   String toolsValue = 'AC';
+  bool tutor1Done = false;
+  bool tutor2Done = false;
+  bool showTutor1 = false;
+  bool showTutor2 = false;
+  late TutorialCoachMark tutorialCoachMark;
   List<String> listDayOrMonth = ['Daily', 'month'];
   List<ElectronicModel> myTools = [];
   List<String> listTools = [
@@ -184,8 +214,8 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     // TODO: implement initState
-    super.initState();
     getData();
+    super.initState();
   }
 
   createNewTools() {
@@ -259,6 +289,12 @@ class _HomePageState extends State<HomePage> {
                         _watts.clear();
                         toolsValue = 'AC';
                         Navigator.pop(context);
+                        if (!tutor2Done) {
+                          showTutor2 = true;
+                          await Future.delayed(Duration(milliseconds: 50));
+                          createTutorial();
+                          showTutorial();
+                        }
                       }
                     },
                     child: Text('Confirm'))
@@ -282,11 +318,18 @@ class _HomePageState extends State<HomePage> {
         setState(() {
           totalDailyKwh = data['totalDailyKwh'];
           thisMonthKwh = data['thisMonthKwh'] + totalDailyKwh;
+          tutor1Done = data['tutor1Done'];
+          tutor2Done = data['tutor2Done'];
           maxDailyKwh = data['maxDailyKwh'];
           userName = data['username'];
           thisMonth = data['month'];
           if (thisMonth != monthName) {
             dbTotal.update({'month': monthName});
+          }
+          if (!tutor1Done) {
+            showTutor1 = true;
+            createTutorial();
+            Future.delayed(Duration.zero, showTutorial);
           }
         });
       }
@@ -328,13 +371,218 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void showTutorial() {
+    tutorialCoachMark.show(context: context);
+  }
+
+  void createTutorial() {
+    tutorialCoachMark = TutorialCoachMark(
+      targets: showTutor1 ? _createTargets() : _createTargets2(),
+      colorShadow: Colors.teal,
+      textSkip: "Press the Button to continue",
+      paddingFocus: 1,
+      opacityShadow: 0.5,
+      imageFilter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+      onFinish: () {
+        debugPrint("finish");
+        DatabaseReference db = FirebaseDatabase.instance.ref('users/$uid');
+        if (showTutor1) {
+          db.update({
+            'tutor1Done': true,
+          });
+        } else if (showTutor2) {
+          db.update({
+            'tutor2Done': true,
+          });
+        }
+      },
+      onClickTarget: (target) {
+        debugPrint('onClickTarget: $target');
+      },
+      onClickTargetWithTapPosition: (target, tapDetails) {
+        debugPrint("target: $target");
+        debugPrint(
+            "clicked at position local: ${tapDetails.localPosition} - global: ${tapDetails.globalPosition}");
+      },
+      onClickOverlay: (target) {
+        debugPrint('onClickOverlay: $target');
+      },
+      onSkip: () {
+        debugPrint("skip");
+        return false;
+      },
+    );
+  }
+
+  List<TargetFocus> _createTargets() {
+    List<TargetFocus> targets = [];
+    targets.add(
+      TargetFocus(
+        identify: "Button Create",
+        keyTarget: keyButton1,
+        alignSkip: Alignment.topRight,
+        enableOverlayTab: true,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            builder: (context, controller) {
+              return const Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  SizedBox(
+                    height: 80,
+                  ),
+                  Text(
+                    "This is where you add your tools for RealTime Track.",
+                    style: TextStyle(color: Colors.white, fontSize: 17),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+
+    targets.add(
+      TargetFocus(
+        identify: "Button Calculate",
+        keyTarget: keyButton2,
+        alignSkip: Alignment.topRight,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            builder: (context, controller) {
+              return const Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  SizedBox(
+                    height: 80,
+                  ),
+                  Text(
+                    "This is where you want to calculate all your tools usage and get best suggest by our AI for save energy result. ",
+                    style: TextStyle(
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+    return targets;
+  }
+
+  List<TargetFocus> _createTargets2() {
+    debugPrint('calculate 2 start');
+    List<TargetFocus> targets = [];
+    targets.add(
+      TargetFocus(
+        identify: "Button Calculate",
+        keyTarget: keyButton3,
+        alignSkip: Alignment.topRight,
+        enableOverlayTab: true,
+        contents: [
+          TargetContent(
+            align: ContentAlign.top,
+            builder: (context, controller) {
+              return const Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  Text(
+                    "This is where you want to calculate all your tools usage and get best suggest by our AI for save energy result.",
+                    style: TextStyle(color: Colors.white, fontSize: 17),
+                  ),
+                  SizedBox(
+                    height: 50,
+                  )
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+
+    targets.add(
+      TargetFocus(
+        identify: "Button Start",
+        keyTarget: keyButton4,
+        alignSkip: Alignment.topRight,
+        contents: [
+          TargetContent(
+            align: ContentAlign.top,
+            builder: (context, controller) {
+              return const Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    "This button will Start Realtime Track based on your tools.",
+                    style: TextStyle(
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(
+                    height: 40,
+                  )
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+    targets.add(
+      TargetFocus(
+        identify: "Button Clear",
+        keyTarget: keyButton5,
+        alignSkip: Alignment.topRight,
+        contents: [
+          TargetContent(
+            align: ContentAlign.top,
+            builder: (context, controller) {
+              return const Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    "In here if you want to clear all your tools list. ",
+                    style: TextStyle(
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(
+                    height: 40,
+                  )
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+    return targets;
+  }
+
   @override
   Widget build(BuildContext context) {
     var startText = 'Start';
     return Scaffold(
       appBar: AppBar(
         title: Text('KillowatMate'),
-        actions: [IconButton(onPressed: () {}, icon: Icon(Icons.info))],
+        actions: [
+          IconButton(
+              onPressed: () {
+                showInformationDialog(context);
+              },
+              icon: Icon(Icons.info))
+        ],
       ),
       drawer: NavigationDrawer(children: [
         UserAccountsDrawerHeader(
@@ -349,7 +597,9 @@ class _HomePageState extends State<HomePage> {
         ListTile(
           leading: Icon(Icons.info_outline),
           title: Text('Information'),
-          onTap: () {},
+          onTap: () {
+            showInformationDialog(context);
+          },
         ),
         Divider(),
         ListTile(
@@ -444,11 +694,8 @@ class _HomePageState extends State<HomePage> {
                     SizedBox(
                       width: 150,
                       child: ElevatedButton(
+                          key: keyButton1,
                           onPressed: () {
-                            /*  Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (ctx) => CreatePage()));*/
                             createNewTools();
                           },
                           child: Row(
@@ -463,6 +710,7 @@ class _HomePageState extends State<HomePage> {
                     SizedBox(
                       width: 150,
                       child: ElevatedButton(
+                          key: keyButton2,
                           onPressed: () {
                             Navigator.push(
                                 context,
@@ -590,6 +838,7 @@ class _HomePageState extends State<HomePage> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   ElevatedButton(
+                      key: keyButton3,
                       onPressed: () {
                         Navigator.push(
                             context,
@@ -603,6 +852,7 @@ class _HomePageState extends State<HomePage> {
                         ],
                       )),
                   ElevatedButton(
+                      key: keyButton4,
                       onPressed: () async {
                         ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('Not Available Right Now')));
@@ -614,6 +864,7 @@ class _HomePageState extends State<HomePage> {
                         ],
                       )),
                   ElevatedButton(
+                      key: keyButton5,
                       onPressed: () {
                         showDialog(
                             context: context,
