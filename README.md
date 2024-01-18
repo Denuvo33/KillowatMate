@@ -18,6 +18,8 @@ How To use it❔
 
 First of all you should sign up if you dont have any account, After that you will navigate to the Home Page,You can choose Create new tools for Realtime Tracker later or you can Choose Calculate for calculate all of your tools usage and give best result to save energy based on your data.
 
+-Press Start/Stop to Start or Stop Realtime Track,When you see Realtime Track Running Notification it Means The Realtime Track is Running,When notification is gone that mean the Realtime Track is Stop.
+
 ⚠️Importand to Read
 
 -If you Start the Realtime Track,it will run Service For Realtime Track, So whenever the app is on Background or Terminated(remove from Background) Realtime track still run,so if you want to stop Realtime Track Press Stop Button and it will stop the service.
@@ -26,11 +28,12 @@ First of all you should sign up if you dont have any account, After that you wil
 
 >HomePage
 
-<img src="https://github.com/Denuvo33/KillowatMate/assets/106959180/bc24546c-3bc0-44fb-9d21-7b55974375e6" width="300" height="700">
+<img src="https://github.com/Denuvo33/KillowatMate/assets/106959180/970f7386-6c3b-418b-8864-06e062393b59" width="300" height="670">
+
 
 
 
 
 >Calculate Page
 
-<img src="https://github.com/Denuvo33/KillowatMate/assets/106959180/8e3ad884-a214-4cdf-92c7-3dccdf84f0b3" width="300" height="700">
+<img src="https://github.com/Denuvo33/KillowatMate/assets/106959180/8e3ad884-a214-4cdf-92c7-3dccdf84f0b3" width="300" height="670">
