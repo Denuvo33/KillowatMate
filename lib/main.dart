@@ -136,7 +136,7 @@ void onStart(ServiceInstance service) async {
     fetchDataAndUpdate();
   });
 
-  Timer.periodic(Duration(seconds: 5), (timer) async {
+  Timer.periodic(Duration(seconds: 10), (timer) async {
     if (DateTime.now().millisecondsSinceEpoch - lastUpdateTime >= 5000) {
       debugPrint('background service running');
       await fetchDataAndUpdate();
@@ -300,8 +300,8 @@ class _HomePageState extends State<HomePage> {
                         ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('Fill all required')));
                       } else {
-                        var result =
-                            num.parse(_amount.text) * num.parse(_watts.text);
+                        /*    var result =
+                            num.parse(_amount.text) * num.parse(_watts.text);*/
 
                         db!.child('$toolsValue ${_watts.text} watts').update({
                           'watt': num.parse(_watts.text),
@@ -309,7 +309,7 @@ class _HomePageState extends State<HomePage> {
                           'amount': num.parse(_amount.text),
                           'condition': true,
                           'runTime': 0,
-                          'totalKwh': result
+                          'totalKwh': 0
                         });
                         _amount.clear();
                         _watts.clear();
