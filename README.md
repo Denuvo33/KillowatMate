@@ -22,6 +22,7 @@ First of all you should sign up if you dont have any account, After that you wil
 
 ⚠️Importand to Read
 
+-Make sure to allow Notification before run the app for better experience.
 -If you Start the Realtime Track,it will run Service For Realtime Track, So whenever the app is on Background or Terminated(remove from Background) Realtime track still run,so if you want to stop Realtime Track Press Stop Button and it will stop the service.
 
 -Usually the Realtime Track will run for every 1 hour after start so we can get kWh result,but for this demo it will run for every 10 seconds (it will make more easy to know how this app work),and thats mean the kWh total is not true for this demo.
