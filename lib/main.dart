@@ -52,54 +52,79 @@ Future<void> initservice() async {
           onStart: onStart,
           autoStart: false,
           //  notificationChannelId: 'Energy Saver Foreground',
-          initialNotificationTitle: 'Energy Saver',
-          initialNotificationContent: 'Service is Start',
+          initialNotificationTitle: 'KillowatMate',
+          initialNotificationContent: 'Realtime Track is Running',
           isForegroundMode: true));
   // service.startService();
 }
 
-@pragma('vm:enry:point')
+@pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
-  var uid = FirebaseAuth.instance.currentUser!.uid;
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  var uid = FirebaseAuth.instance.currentUser!.uid;
   DartPluginRegistrant.ensureInitialized();
-  DatabaseReference db = FirebaseDatabase.instance.ref('users/$uid');
-
   int lastUpdateTime = 0;
   num totalDailyKwh = 0;
-  void fetchDataAndUpdate() async {
-    db.onValue.listen((event) {
+
+  Future<void> fetchDataAndUpdate() async {
+    DatabaseReference db = FirebaseDatabase.instance.ref('users/$uid');
+    num result = 0;
+    num thisMonthKwh = 0;
+    await db.onValue.first.then((event) {
       var data = event.snapshot.value;
       if (data != null && data is Map) {
         totalDailyKwh = data['totalDailyKwh'];
-      }
-    });
-    db.child('tools').once().then((event) {
-      var data = event.snapshot.value;
-      if (data != null && data is Map) {
-        data.forEach((key, value) async {
-          var condition = value['condition'];
-          if (condition) {
-            var watt = value['watt'];
-            var amount = value['amount'];
-            var totalkwh = value['totalKwh'];
-            totalkwh += (watt * 2 / 1000) * amount;
-            totalDailyKwh += totalkwh;
-            db.child('$key').update({'totalKwh': totalkwh});
-            db.update({'totalDailyKwh': totalDailyKwh});
-          }
-        });
+        thisMonthKwh = data['thisMonthKwh'];
       }
     });
 
+    await db.child('tools').once().then((event) async {
+      var data = event.snapshot.value;
+      if (data != null && data is Map) {
+        for (var entry in data.entries) {
+          var key = entry.key;
+          var value = entry.value;
+          var condition = value['condition'];
+          var runTime = value['runTime'];
+
+          var watt = value['watt'];
+          // var amount = value['amount'];
+          var totalkwh = await value['totalKwh'];
+          if (condition) {
+            runTime += 1;
+            totalkwh += await watt * 2;
+            result += totalkwh;
+            await db.child('tools').child('$key').update(
+              {'totalKwh': totalkwh},
+            );
+            await db.child('tools').child('$key').update(
+              {
+                'runTime': runTime,
+              },
+            );
+            runTime = 0;
+          }
+        }
+      }
+    });
+
+    await db.update({'totalDailyKwh': result});
+    totalDailyKwh = result;
+    db.update(
+      {
+        'thisMonthKwh': thisMonthKwh += result,
+      },
+    );
+
     flutterLocalPlugin.show(
       90,
-      "Energy Saver",
-      'Total Daily kWh is $totalDailyKwh',
+      "KillowatMate",
+      'Total Daily kWh is ${totalDailyKwh.toStringAsFixed(2)}',
       NotificationDetails(
         android: AndroidNotificationDetails(
           'Energy Saver Foreground',
           'Energy Saver Foreground Service',
+          // icon: 'ic_bg_service_smal',
           ongoing: true,
         ),
       ),
@@ -111,9 +136,10 @@ void onStart(ServiceInstance service) async {
     fetchDataAndUpdate();
   });
 
-  Timer.periodic(Duration(seconds: 5), (timer) {
+  Timer.periodic(Duration(seconds: 10), (timer) async {
     if (DateTime.now().millisecondsSinceEpoch - lastUpdateTime >= 5000) {
-      fetchDataAndUpdate();
+      debugPrint('background service running');
+      await fetchDataAndUpdate();
     }
   });
 
@@ -154,7 +180,7 @@ class MyApp extends StatelessWidget {
       home: const AuthPage(),
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-          appBarTheme: AppBarTheme(color: Colors.cyan),
+          //appBarTheme: AppBarTheme(color: Colors.cyan),
           useMaterial3: true,
           colorSchemeSeed: Colors.cyan,
           elevatedButtonTheme: ElevatedButtonThemeData(
@@ -189,11 +215,11 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _amount = TextEditingController();
   String toolsValue = 'AC';
   bool tutor1Done = false;
+  var startText = 'Start/Stop';
   bool tutor2Done = false;
   bool showTutor1 = false;
   bool showTutor2 = false;
   late TutorialCoachMark tutorialCoachMark;
-  List<String> listDayOrMonth = ['Daily', 'month'];
   List<ElectronicModel> myTools = [];
   List<String> listTools = [
     'AC',
@@ -274,8 +300,8 @@ class _HomePageState extends State<HomePage> {
                         ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('Fill all required')));
                       } else {
-                        var result =
-                            num.parse(_amount.text) * num.parse(_watts.text);
+                        /*    var result =
+                            num.parse(_amount.text) * num.parse(_watts.text);*/
 
                         db!.child('$toolsValue ${_watts.text} watts').update({
                           'watt': num.parse(_watts.text),
@@ -283,7 +309,7 @@ class _HomePageState extends State<HomePage> {
                           'amount': num.parse(_amount.text),
                           'condition': true,
                           'runTime': 0,
-                          'totalKwh': result
+                          'totalKwh': 0
                         });
                         _amount.clear();
                         _watts.clear();
@@ -317,7 +343,7 @@ class _HomePageState extends State<HomePage> {
       if (data != null && data is Map) {
         setState(() {
           totalDailyKwh = data['totalDailyKwh'];
-          thisMonthKwh = data['thisMonthKwh'] + totalDailyKwh;
+          thisMonthKwh = data['thisMonthKwh'];
           tutor1Done = data['tutor1Done'];
           tutor2Done = data['tutor2Done'];
           maxDailyKwh = data['maxDailyKwh'];
@@ -572,10 +598,10 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    var startText = 'Start';
     return Scaffold(
       appBar: AppBar(
         title: Text('KillowatMate'),
+        centerTitle: true,
         actions: [
           IconButton(
               onPressed: () {
@@ -641,20 +667,22 @@ class _HomePageState extends State<HomePage> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 Card(
-                  color: Colors.tealAccent,
+                  // color: Colors.tealAccent,
                   child: Container(
                     margin: const EdgeInsets.all(7),
                     child: Column(
                       children: [
                         Text('Max Daily kWh',
                             style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text(maxDailyKwh == 0 ? 'Nothing' : '$maxDailyKwh kWh'),
+                        Text(maxDailyKwh == 0
+                            ? 'Nothing'
+                            : '${maxDailyKwh.toStringAsFixed(2)} kWh'),
                       ],
                     ),
                   ),
                 ),
                 Card(
-                  color: Colors.tealAccent,
+                  // color: Colors.tealAccent,
                   child: Container(
                     width: 80,
                     margin: const EdgeInsets.all(7),
@@ -664,13 +692,13 @@ class _HomePageState extends State<HomePage> {
                           'Today',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        Text('$totalDailyKwh kWh')
+                        Text('${totalDailyKwh.toStringAsFixed(2)} kWh')
                       ],
                     ),
                   ),
                 ),
                 Card(
-                  color: Colors.tealAccent,
+                  // color: Colors.tealAccent,
                   child: Container(
                     width: 80,
                     margin: const EdgeInsets.all(7),
@@ -678,7 +706,7 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         Text(thisMonth,
                             style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text('$thisMonthKwh kWh')
+                        Text('${thisMonthKwh.toStringAsFixed(2)} kWh')
                       ],
                     ),
                   ),
@@ -810,7 +838,7 @@ class _HomePageState extends State<HomePage> {
                                         'Time Running: ${toolsList[index].runTime} minute'),
                                     Divider(),
                                     Text(
-                                      'Total Watts: ${toolsList[index].totalToolsKwh}',
+                                      'Total kWh: ${toolsList[index].totalToolsKwh!.toStringAsFixed(2)}',
                                       style: TextStyle(
                                           fontWeight: FontWeight.bold),
                                     )
@@ -848,8 +876,15 @@ class _HomePageState extends State<HomePage> {
                   ElevatedButton(
                     key: keyButton4,
                     onPressed: () async {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Not Available Right Now')));
+                      FlutterBackgroundService service =
+                          FlutterBackgroundService();
+                      var isRunning = await service.isRunning();
+
+                      if (isRunning) {
+                        service.invoke('stopService');
+                      } else {
+                        await service.startService();
+                      }
                     },
                     child: Text(startText),
                   ),
