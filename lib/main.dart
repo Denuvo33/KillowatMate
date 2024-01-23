@@ -28,7 +28,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await initservice();
-  Gemini.init(apiKey: 'AIzaSyCPv3EnoImMB1AJn1z_iMqoLs25LsNkzFs');
+  Gemini.init(apiKey: '--Your API Key--');
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const MyApp());
 }
