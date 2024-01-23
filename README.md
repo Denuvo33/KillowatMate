@@ -1,14 +1,4 @@
-KillowatMate App By GrindingHome
-
-Nama Anggota
-
-1.Syahid Al Baddry
-
-2.Afif Fathin
-
-3.Jerry Lucas
-
-4.Okthia Viyanti
+KillowatMate App 
 
 What is KillowatMate❔
 
@@ -21,6 +11,8 @@ First of all you should sign up if you dont have any account, After that you wil
 -Press Start/Stop to Start or Stop Realtime Track,When you see Realtime Track Running Notification it Means The Realtime Track is Running,When notification is gone that mean the Realtime Track is Stop.
 
 ⚠️Importand to Read
+
+-Make Sure to use your Gemini API Key
 
 -Make sure to allow Notification before run the app for better experience.
 
